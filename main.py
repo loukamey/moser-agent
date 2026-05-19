@@ -10,7 +10,7 @@ import json
 import os
 import anthropic
 
-ANTHROPIC_API_KEY = "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"
+ANTHROPIC_API_KEY = "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"
 EMAIL_SENDER = "loukamey@icloud.com"
 EMAIL_PASSWORD = "iqku-ityt-kwds-ikmc"
 EMAIL_RECEIVER = "loukamey@icloud.com"
@@ -108,7 +108,7 @@ Write a sharp professional daily briefing for a serious H. Moser & Cie collector
 If no listings were found today, write a general H. Moser & Cie market intelligence briefing based on your knowledge of the brand, current collector trends, and what to look for in the secondary market. Make it genuinely useful."""
 
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -148,7 +148,7 @@ def monthly_job():
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"""Write a comprehensive monthly H. Moser & Cie market report for {datetime.now().strftime("%B %Y")} covering market trends, price analysis, auction results, rarity signals, and investment outlook."""
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         max_tokens=2500,
         messages=[{"role": "user", "content": prompt}]
     )
