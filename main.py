@@ -10,7 +10,7 @@ import json
 import os
 import anthropic
 
-ANTHROPIC_API_KEY = "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"
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EMAIL_SENDER = "loukamey@icloud.com"
 EMAIL_PASSWORD = "iqku-ityt-kwds-ikmc"
 EMAIL_RECEIVER = "loukamey@icloud.com"
