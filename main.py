@@ -80,6 +80,7 @@ def daily_job():
     print(f"Running daily scan - {datetime.now()}")
     listings = scrape_moser_watches()
     print(f"Found {len(listings)} listings")
+    print("Generating report...")
     report = generate_report(listings)
     send_email(f"Moser Daily Alert - {datetime.now().strftime('%B %d, %Y')}", report)
 
