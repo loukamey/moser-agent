@@ -88,7 +88,7 @@ def hourly_check():
     listings = scrape_moser_watches()
     is_urgent, reason = check_urgent(listings)
     if is_urgent:
-        alert = f"🚨🔴🚨🔴🚨🔴🚨🔴🚨\n\n<b>LOUKA — ACT NOW</b>\n\n{reason}\n\n→ chrono24.com/search/?query=h+moser+cie\n→ phillips.com\n\n⏰ {datetime.now().strftime('%H:%M')} Dubai time"
+        alert = f"🚨‼️\n\n<b>LOUKA — ACT NOW</b>\n\n{reason}\n\n→ chrono24.com/search/?query=h+moser+cie\n→ phillips.com\n\n⏰ {datetime.now().strftime('%H:%M')} Dubai time"
         send_telegram(alert)
         print(f"URGENT ALERT SENT: {reason}")
 
