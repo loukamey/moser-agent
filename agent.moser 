@@ -1,0 +1,281 @@
+import requests
+from bs4 import BeautifulSoup
+import schedule
+import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+import json
+import anthropic
+
+# ============================================
+# SETTINGS - FILL THESE IN
+# ============================================
+ANTHROPIC_API_KEY = "YOUR_API_KEY_HERE"
+EMAIL_SENDER = "YOUR_OUTLOOK_EMAIL@outlook.com"
+EMAIL_PASSWORD = "YOUR_OUTLOOK_PASSWORD_HERE"
+EMAIL_RECEIVER = "YOUR_OUTLOOK_EMAIL@outlook.com"
+
+# ============================================
+# SCRAPER - Finds H. Moser & Cie watches
+# ============================================
+def scrape_moser_watches():
+    listings = []
+    
+    # Chrono24 - Secondary market
+    try:
+        url = "https://www.chrono24.com/search/index.htm?query=h+moser+cie"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        for item in soup.select(".article-item-container")[:15]:
+            title = item.select_one(".article-title")
+            price = item.select_one(".price")
+            if title and price:
+                listings.append({
+                    "source": "Chrono24",
+                    "type": "Secondary Market",
+                    "title": title.text.strip(),
+                    "price": price.text.strip(),
+                    "date": datetime.now().strftime("%Y-%m-%d")
+                })
+    except Exception as e:
+        print(f"Chrono24 error: {e}")
+
+    # WatchBox - Pre-owned
+    try:
+        url = "https://www.watchbox.com/search?q=moser"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        for item in soup.select(".product-tile")[:10]:
+            title = item.select_one(".product-title")
+            price = item.select_one(".product-price")
+            if title and price:
+                listings.append({
+                    "source": "WatchBox",
+                    "type": "Pre-owned",
+                    "title": title.text.strip(),
+                    "price": price.text.strip(),
+                    "date": datetime.now().strftime("%Y-%m-%d")
+                })
+    except Exception as e:
+        print(f"WatchBox error: {e}")
+
+    return listings
+
+# ============================================
+# SCRAPER - Finds auction results
+# ============================================
+def scrape_auction_results():
+    results = []
+
+    # Phillips Auction
+    try:
+        url = "https://www.phillips.com/search#tabs=lots&q=moser"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        for item in soup.select(".lot-tile")[:10]:
+            title = item.select_one(".lot-title")
+            price = item.select_one(".lot-price")
+            if title:
+                results.append({
+                    "source": "Phillips",
+                    "type": "Auction",
+                    "title": title.text.strip(),
+                    "price": price.text.strip() if price else "TBD",
+                    "date": datetime.now().strftime("%Y-%m-%d")
+                })
+    except Exception as e:
+        print(f"Phillips error: {e}")
+
+    return results
+
+# ============================================
+# SAVE MONTHLY DATA
+# ============================================
+def save_to_monthly_log(data):
+    log_file = "monthly_log.json"
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            existing = json.load(f)
+    else:
+        existing = []
+    existing.extend(data)
+    with open(log_file, "w") as f:
+        json.dump(existing, f)
+
+import os
+
+def load_monthly_log():
+    log_file = "monthly_log.json"
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            return json.load(f)
+    return []
+
+def clear_monthly_log():
+    with open("monthly_log.json", "w") as f:
+        json.dump([], f)
+
+# ============================================
+# CLAUDE DAILY ANALYSIS
+# ============================================
+def daily_analysis(listings, auctions):
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    
+    prompt = f"""You are a professional watch market analyst specializing in H. Moser & Cie.
+
+Today's date: {datetime.now().strftime("%B %d, %Y")}
+
+NEW SECONDARY MARKET LISTINGS TODAY:
+{json.dumps(listings, indent=2)}
+
+LATEST AUCTION RESULTS:
+{json.dumps(auctions, indent=2)}
+
+Write a SHORT, sharp daily briefing (5 minute read) for a serious collector/dealer covering:
+- 🆕 New pieces that appeared today (reference number, price, source)
+- 🏆 Any auction results worth noting
+- ⚡ Any unusual pricing or rare references spotted
+- 💡 One quick market observation
+
+Be concise, professional, and direct. No fluff."""
+
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=800,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+# ============================================
+# CLAUDE MONTHLY ANALYSIS
+# ============================================
+def monthly_analysis(all_data):
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    
+    prompt = f"""You are a professional watch market analyst specializing in H. Moser & Cie.
+
+Month: {datetime.now().strftime("%B %Y")}
+
+FULL MONTH OF DATA:
+{json.dumps(all_data, indent=2)}
+
+Write a comprehensive monthly market report including:
+
+1. EXECUTIVE SUMMARY
+   - Overall market health for H. Moser & Cie this month
+
+2. SECONDARY MARKET ANALYSIS
+   - Most active references
+   - Average prices by reference
+   - Price trends vs last month
+   - Fastest selling pieces
+
+3. AUCTION RESULTS
+   - All auction results this month
+   - Hammer prices vs estimates
+   - Record prices achieved
+   - Notable lots
+
+4. RARITY SIGNALS
+   - References appearing for first time
+   - Limited editions spotted
+   - Unusual configurations
+
+5. STATISTICS
+   - Total listings tracked
+   - Average price points
+   - Price range (lowest to highest)
+   - Most common references
+
+6. MARKET OUTLOOK
+   - Buying opportunities
+   - References to watch
+   - Recommendations for collectors and dealers
+
+Format as a professional report. Be detailed, data-driven, and specific."""
+
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+# ============================================
+# EMAIL - OUTLOOK
+# ============================================
+def send_email(subject, body):
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_SENDER
+    msg["To"] = EMAIL_RECEIVER
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+    try:
+        with smtplib.SMTP("smtp.office365.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        print(f"✅ Email sent: {subject}")
+    except Exception as e:
+        print(f"❌ Email error: {e}")
+
+# ============================================
+# DAILY JOB - Runs every day at 8am Dubai
+# ============================================
+def daily_job():
+    print(f"🔍 Running daily scan - {datetime.now()}")
+    listings = scrape_moser_watches()
+    auctions = scrape_auction_results()
+    all_found = listings + auctions
+    
+    if all_found:
+        save_to_monthly_log(all_found)
+        analysis = daily_analysis(listings, auctions)
+        send_email(
+            f"⌚ Moser Daily Alert - {datetime.now().strftime('%B %d, %Y')}",
+            analysis
+        )
+        print(f"Found {len(all_found)} listings today")
+    else:
+        print("No new listings found today")
+
+# ============================================
+# MONTHLY JOB - Runs on 1st of each month
+# ============================================
+def monthly_job():
+    print(f"📊 Running monthly analysis - {datetime.now()}")
+    all_data = load_monthly_log()
+    if all_data:
+        analysis = monthly_analysis(all_data)
+        send_email(
+            f"📊 Moser Monthly Market Report - {datetime.now().strftime('%B %Y')}",
+            analysis
+        )
+        clear_monthly_log()
+        print("Monthly report sent and log cleared")
+    else:
+        print("No data collected this month")
+
+# ============================================
+# SCHEDULER - Dubai time is UTC+4
+# So 8am Dubai = 4am UTC
+# ============================================
+schedule.every().day.at("04:00").do(daily_job)
+schedule.every().monday.at("04:00").do(
+    lambda: datetime.now().day <= 7 and monthly_job()
+)
+
+print("✅ H. Moser & Cie Watch Agent is running!")
+print(f"📅 Daily alerts: every day at 8:00am Dubai time")
+print(f"📊 Monthly report: first Monday of each month")
+print(f"Started at: {datetime.now()}")
+
+while True:
+    schedule.run_pending()
+    time.sleep(60)
+ø

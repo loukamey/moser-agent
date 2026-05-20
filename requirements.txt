@@ -2,4 +2,3 @@ requests
 anthropic
 schedule
 beautifulsoup4
-chrono24-py
