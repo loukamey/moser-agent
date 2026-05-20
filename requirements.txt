@@ -1,4 +1,4 @@
 requests
-beautifulsoup4
-schedule
 anthropic
+schedule
+chrono24
