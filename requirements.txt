@@ -1,4 +1,5 @@
 requests
 anthropic
 schedule
-chrono24
+beautifulsoup4
+chrono24-py
